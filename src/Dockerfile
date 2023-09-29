@@ -26,7 +26,7 @@ RUN --mount=type=cache,target=/root/.conda/pkgs \
     pytorch torchvision torchaudio pytorch-cuda=12.1 -c pytorch-nightly -c nvidia
 
 RUN --mount=type=cache,target=/root/.cache/pip \
-    /opt/conda/bin/conda run python -m pip install gpustat transformers
+    /opt/conda/bin/conda run python -m pip install gpustat transformers tabulate
 
 ENV TRANSFORMERS_CACHE="/root/huggingface/transformers"
 

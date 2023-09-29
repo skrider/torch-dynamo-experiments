@@ -2,3 +2,4 @@ deploy/.terraform
 deploy/.terraform.lock.hcl
 deploy/terraform.tfstate
 tfoutput.json
+data

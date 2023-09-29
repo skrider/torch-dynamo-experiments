@@ -5,5 +5,5 @@ set -o nounset
 set -o pipefail
 set -o errexit
 
-rsync --verbose --archive --progress --rsh="ssh" ${HOST_PREFIX}0:~/data ./data
+rsync --verbose --archive --progress --rsh="ssh" ${HOST_PREFIX}0:~/data .
 
