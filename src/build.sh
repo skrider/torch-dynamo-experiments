@@ -5,5 +5,7 @@ set -o nounset
 set -o pipefail
 set -o errexit
 
-rsync --verbose --archive --progress --rsh="ssh" ./src ${HOST_PREFIX}0:
+export DOCKER_BUILDKIT=1 
+
+docker build . --tag cuda-pytorch-nightly
 
