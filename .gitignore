@@ -3,3 +3,4 @@ deploy/.terraform.lock.hcl
 deploy/terraform.tfstate
 tfoutput.json
 data
+src/torch_dynamo_experiments.egg-info
