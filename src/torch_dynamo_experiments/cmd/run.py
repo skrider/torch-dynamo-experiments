@@ -1,65 +1,80 @@
 import torch
-import random
+import time
 
 from torch_dynamo_experiments.util import pytorch_util as ptu
-from torch_dynamo_experiments.util import util
-from torch_dynamo_experiments.experiment import experiment_dict
 from torch_dynamo_experiments.backend import backend_dict
-from huggingface_hub import HfFileSystem
 
 import os
 
-WAIT_STEPS = 1
-WARMUP_STEPS = 1
-REPEAT = 1
-
-HF_TOKEN = os.environ["HF_TOKEN"]
-
-def download_model(out_dir: str, model_id: str) -> str:
-    hf_path = f"{model_id}/pytorch_model.bin"
-    out_file = f"{out_dir}/{str(hf_path).replace('/', '--')}"
-
-    if os.path.isfile(out_file):
-        print(f"Skipping download already present {out_file}")
-    else:
-        out_temp = f"{out_dir}/{random.randint(0, 2**31)}"
-        print(f"Downloading {hf_path} to {out_temp}")
-        HfFileSystem(token=HF_TOKEN).download(hf_path, out_temp)
-        print(f"Atomically renaming {out_temp} to {out_file}")
-        os.rename(out_temp, out_file)
-
-    return out_file
-
-def profile_experiment(args):
-    model_out = download_model(args.model_cache_dir, args.model_name)
-
-    model = torch.load(model_out)
-
-    __import__('pdb').set_trace()
+def profile_experiment(args, logdir_base):
+    model_import = __import__(f"torchbenchmark.models.{args.model_name}")
+    model, example_inputs = (
+        model_import.models.__dict__[args.model_name]
+        .Model(test="eval", device="cpu", batch_size=args.batch_size)
+        .get_module()
+    )
+    model.eval()
 
     # profile cuda load time
     def load_unload_model():
         model.to(ptu.device)
         model.to("cpu")
+    logdir = f"{logdir_base}/load"
+    if not (os.path.exists(logdir)):
+        os.makedirs(logdir)
 
-    ptu.profile_function(load_unload_model, args.logdir, 10, ["cpu", "cuda"])
+    ptu.profile_function(load_unload_model, logdir, 10)
+
+    model.to(ptu.device)
+    example_inputs = [i.to(ptu.device) for i in example_inputs if type(i) == torch.Tensor]
+
+    model = torch.compile(backend=backend_dict[args.backend])(model)
+    # profile model compile time
+    def run_inference():
+        model(*example_inputs)
+    # logdir = f"{args.logdir}/compile"
+    # if not (os.path.exists(logdir)):
+    #     os.makedirs(logdir)
+    # 
+    # # TODO find out a way to invalidate the cache and compile multiple times
+    # ptu.profile_function(run_inference, logdir, 1, warmup=False)
+    print("Compiling model")
+    start_time = time.time()
+    run_inference()
+    end_time = time.time()
+    print(f"Compiling model took {end_time - start_time} seconds")
+
+    # profile model inference time
+    logdir = f"{logdir_base}/run"
+    if not (os.path.exists(logdir)):
+        os.makedirs(logdir)
+
+    ptu.profile_function(run_inference, logdir, args.n_iter, tensorboard=True)
 
 def main():
     import argparse
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--model_name", type=str, required=True)
-    parser.add_argument("--model_cache_dir", type=str, default="/tmp/models")
-    parser.add_argument("--activity", type=str, default="cpu")
     parser.add_argument("--backend", type=str, default="inductor")
     parser.add_argument("--logdir", type=str, required=True)
     parser.add_argument("--n_iter", "-n", type=int, default=1000)
+    parser.add_argument("--batch_size", "-b", type=int, default=1)
 
     args = parser.parse_args()
 
+    logdir = f"{args.logdir}/{args.model_name}_{args.backend}_{args.batch_size}"
+
+    if not (os.path.exists(args.logdir)):
+        os.makedirs(args.logdir)
+
+    if not (os.path.exists(logdir)):
+        os.makedirs(logdir)
+
+    # was getting a warning
     torch.set_float32_matmul_precision("high")
 
-    profile_experiment(args)
+    profile_experiment(args, logdir)
 
 
 if __name__ == "__main__":

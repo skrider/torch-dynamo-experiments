@@ -8,12 +8,14 @@ WAIT_STEPS = 1
 WARMUP_STEPS = 1
 REPEAT = 1
 
+
 def profile_function(
     fn: Callable,
     out_dir: str,
     n: int,
-    activities: List[str] = ["cpu"],
+    activities: List[str] = ["cpu", "cuda"],
     tensorboard: bool = False,
+    warmup: bool = True,
 ):
     def trace_handler(prof):
         if tensorboard:
@@ -36,13 +38,15 @@ def profile_function(
     if "cpu" in activities:
         a.append(torch.profiler.ProfilerActivity.CPU)
 
+    wait_steps = (WAIT_STEPS if warmup else 0)
+    warmup_steps = (WARMUP_STEPS if warmup else 0)
+
     with torch.profiler.profile(
         activities=a,
         schedule=torch.profiler.schedule(
-            wait=WAIT_STEPS, warmup=WARMUP_STEPS, active=n, repeat=1
+            wait=wait_steps, warmup=warmup_steps, active=n, repeat=1
         ),
         profile_memory=True,
-        use_cuda=("cuda" in activities),
         on_trace_ready=trace_handler,
         # have to include this or else cuda stacks don't get exported, see
         # https://github.com/pytorch/pytorch/issues/100253

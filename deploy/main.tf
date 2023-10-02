@@ -6,12 +6,12 @@ provider "tls" {}
 
 locals {
   suffix   = lower(random_string.suffix.result)
-  name     = "quantization-${local.suffix}"
+  name     = "torch-experiments-${local.suffix}"
   az_index = 1
   azs      = slice(data.aws_availability_zones.available.names, 0, 2)
   vpc_cidr = "10.0.0.0/16"
   tags = {
-    Project = "quantization"
+    Project = "torch-experiments"
   }
 }
 
@@ -129,7 +129,7 @@ locals {
   instances = [
     {
       ami           = data.aws_ami.ubuntu_gpu.id
-      instance_type = "g5.xlarge"
+      instance_type = "g5.2xlarge"
     }
   ]
 }

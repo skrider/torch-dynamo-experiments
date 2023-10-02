@@ -1,4 +1,4 @@
-FROM nvidia/cuda:12.2.0-devel-ubuntu20.04
+FROM nvidia/cuda:12.2.0-devel-ubuntu20.04 AS base
 
 RUN apt-get update -q \
     && apt-get install -q -y --no-install-recommends \
@@ -26,7 +26,22 @@ RUN --mount=type=cache,target=/root/.conda/pkgs \
     pytorch torchvision torchaudio pytorch-cuda=12.1 -c pytorch-nightly -c nvidia
 
 RUN --mount=type=cache,target=/root/.cache/pip \
-    /opt/conda/bin/conda run python -m pip install gpustat transformers tabulate tensorboard tensorboardX
+    /opt/conda/bin/conda run python -m pip install \
+    gpustat transformers tabulate tensorboard tensorboardX torch-tb-profiler
 
-ENV TRANSFORMERS_CACHE="/root/huggingface/transformers"
+RUN git clone https://github.com/pytorch/benchmark
+COPY models.txt /models.txt
+RUN /opt/conda/bin/conda run python -u /benchmark/install.py $(cat models.txt | sed '/^# /d')
+RUN /opt/conda/bin/conda run python -m pip install /benchmark
+
+FROM base AS final
+
+COPY . /src
+# for some reason have to install editable
+RUN /opt/conda/bin/conda run python -m pip install -e /src
+
+# for some reason torchbenchmark needs to be imported in its root directory
+WORKDIR /benchmark
+
+ENTRYPOINT ["/opt/conda/bin/conda", "run", "python", "-m", "torch_dynamo_experiments.cmd.run"]
 
