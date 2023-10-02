@@ -15,6 +15,7 @@ def profile_experiment(args):
     experiment_fn = make_exp(backend_dict[args.backend])
 
     def trace_handler(prof):
+        torch.profiler.tensorboard_trace_handler(args.logdir)(prof)
         with open(f"{stack_file_path}.txt", "w") as f:
             f.write(p.key_averages().table(sort_by=f"self_{args.activity}_time_total", row_limit=10))
         print(f"Writing stack to {stack_file_path}")
