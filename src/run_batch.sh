@@ -14,7 +14,7 @@ BACKENDS="inductor null"
 _work () {
     docker run --gpus all --network host \
         -v ~/data:/data \
-        -e .env
+        --env-file env \
         pytorch-cuda-experiments \
         --model_name $1 \
         --n_iter 50 \

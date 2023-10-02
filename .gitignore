@@ -7,3 +7,4 @@ src/torch_dynamo_experiments.egg-info
 .direnv
 shell.nix
 deploy/terraform.tfstate.backup
+src/env
