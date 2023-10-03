@@ -1,6 +1,8 @@
 alexnet
 # Background_Matting
-basic_gnn_edgecnn
+
+# torch_geometric is probably not compatible yet with inductor
+# basic_gnn_edgecnn
 # basic_gnn_gcn
 # basic_gnn_gin
 # basic_gnn_sage

@@ -6,6 +6,8 @@ from torch_dynamo_experiments.backend import backend_dict
 
 import os
 
+from torch_dynamo_experiments.util.util import timestamp
+
 def profile_experiment(args, logdir_base):
     model_import = __import__(f"torchbenchmark.models.{args.model_name}")
     model, example_inputs = (
@@ -63,7 +65,7 @@ def main():
 
     args = parser.parse_args()
 
-    logdir = f"{args.logdir}/{args.model_name}_{args.backend}_{args.batch_size}"
+    logdir = f"{args.logdir}/{args.model_name}_{args.backend}_{args.batch_size}_{timestamp()}"
 
     if not (os.path.exists(args.logdir)):
         os.makedirs(args.logdir)
@@ -73,8 +75,9 @@ def main():
 
     # was getting a warning
     torch.set_float32_matmul_precision("high")
-
-    profile_experiment(args, logdir)
+    
+    with torch.no_grad():
+        profile_experiment(args, logdir)
 
 
 if __name__ == "__main__":
