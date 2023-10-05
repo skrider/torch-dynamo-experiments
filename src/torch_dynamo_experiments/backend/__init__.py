@@ -3,6 +3,7 @@ from . import inductor_passthrough
 from . import null
 from . import keepaway
 from . import interpreter
+from . import recompile
 
 backend_dict = {
     "inductor_passthrough": inductor_passthrough.backend,
@@ -11,4 +12,5 @@ backend_dict = {
     "keepaway": keepaway.backend,
     "inductor": "inductor",
     "interpreter": interpreter.backend,
+    "recompile": recompile.backend,
 }

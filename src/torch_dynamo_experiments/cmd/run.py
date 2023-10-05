@@ -17,25 +17,30 @@ def profile_experiment(args, logdir_base):
         .get_module()
     )
     model.eval()
-    example_outputs = model(example_inputs)
+    example_outputs = model(*example_inputs)
 
     model = torch.compile(backend=backend_dict[args.backend])(model)
 
-    # profile model compile time
     def run_inference():
         model(*example_inputs)
 
-    # logdir = f"{args.logdir}/compile"
-    # if not (os.path.exists(logdir)):
-    #     os.makedirs(logdir)
-    #
-    # # TODO find out a way to invalidate the cache and compile multiple times
+    logdir = f"{args.logdir}/compile"
+    if not (os.path.exists(logdir)):
+        os.makedirs(logdir)
+
+    # profiling compilation crashes the machine for some reason
     # ptu.profile_function(run_inference, logdir, 1, warmup=False)
-    print("Compiling model")
-    start_time = time.time()
-    run_inference()
-    end_time = time.time()
-    print(f"Compiling model took {end_time - start_time} seconds")
+
+    # check equality
+    diff = torch.linalg.matrix_norm(model(*example_inputs) - example_outputs)
+    __import__('pdb').set_trace()
+    assert diff <= 0.1
+
+    # print("Compiling model")
+    # start_time = time.time()
+    # run_inference()
+    # end_time = time.time()
+    # print(f"Compiling model took {end_time - start_time} seconds")
 
     # profile model inference time
     logdir = f"{logdir_base}/run"
