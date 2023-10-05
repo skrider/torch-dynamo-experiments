@@ -38,8 +38,8 @@ def profile_function(
     if "cpu" in activities:
         a.append(torch.profiler.ProfilerActivity.CPU)
 
-    wait_steps = (WAIT_STEPS if warmup else 0)
-    warmup_steps = (WARMUP_STEPS if warmup else 0)
+    wait_steps = WAIT_STEPS if warmup else 0
+    warmup_steps = WARMUP_STEPS if warmup else 0
 
     with torch.profiler.profile(
         activities=a,

@@ -10,5 +10,5 @@ backend_dict = {
     "null": null.backend,
     "keepaway": keepaway.backend,
     "inductor": "inductor",
-    "interpreter": interpreter.backend
+    "interpreter": interpreter.backend,
 }
