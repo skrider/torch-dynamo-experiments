@@ -1,3 +1,3 @@
-# skyplexer
+# torch dynamo experiments
 
-Attempt to multiplex torch compute graph operations across devices
+Experiments with profiling pytorch models JIT compiled with TorchInductor on an A10

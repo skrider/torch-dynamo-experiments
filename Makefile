@@ -9,13 +9,6 @@ ssh-add: $(TF_OUT)
 	cat $(TF_OUT) | jq -r .private_key.value | ssh-add -
 	cat $(TF_OUT) | jq -r .bastion_private_key.value | ssh-add -
 
-ssh-config: $(TF_OUT)
-	@echo "Host skyplex"
-	@echo "	HostName $(shell cat $(TF_OUT) | jq -r '.node_ips.value[0]')"
-	@echo "	User ubuntu"
-	@echo "	ProxyJump ec2-user@$(shell cat $(TF_OUT) | jq -r '.public_ip.value')"
-	@echo "	ForwardAgent yes"
-
 stop-instances:
 	aws ec2 stop-instances --instance-ids $(shell cat $(TF_OUT) | jq -r .node_ids.value[0])
 

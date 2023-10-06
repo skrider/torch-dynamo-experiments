@@ -1,6 +1,8 @@
 import torch
+import time
+import os
 from typing import Callable, List
-from torch_dynamo_experiments.util.util import timestamp
+from torch_dynamo_experiments.util.util import timestamp, Logger
 
 device = "cuda"
 
@@ -11,12 +13,18 @@ REPEAT = 1
 
 def profile_function(
     fn: Callable,
-    out_dir: str,
+    out_base_dir: str,
+    name: str,
     n: int,
+    logger: Logger,
     activities: List[str] = ["cpu", "cuda"],
     tensorboard: bool = False,
     warmup: bool = True,
 ):
+    out_dir = f"{out_base_dir}/{name}"
+    if not (os.path.exists(out_dir)):
+        os.makedirs(out_dir)
+
     def trace_handler(prof):
         if tensorboard:
             torch.profiler.tensorboard_trace_handler(out_dir)(prof)
@@ -41,6 +49,8 @@ def profile_function(
     wait_steps = WAIT_STEPS if warmup else 0
     warmup_steps = WARMUP_STEPS if warmup else 0
 
+    mean_time = 0
+
     with torch.profiler.profile(
         activities=a,
         schedule=torch.profiler.schedule(
@@ -54,7 +64,14 @@ def profile_function(
         with_stack=True,
     ) as p:
         print("running experiment")
-        for _ in range(WAIT_STEPS + WARMUP_STEPS + n + 1):
+        for i in range(WAIT_STEPS + WARMUP_STEPS + n + 1):
+            time_start = time.time()
             fn()
             p.step()
+            time_end = time.time()
+            if i >= WAIT_STEPS + WARMUP_STEPS:
+                mean_time += time_end - time_start
+            logger.log_scalar(time_end - time_start, f"{name}_time", i)
         print("experiment complete")
+
+    logger.log_singleton_scalar(mean_time / n, f"{name}_mean_time")

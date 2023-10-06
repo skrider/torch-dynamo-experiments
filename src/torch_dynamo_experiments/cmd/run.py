@@ -2,14 +2,14 @@ import torch
 import time
 
 from torch_dynamo_experiments.util import pytorch_util as ptu
+from torch_dynamo_experiments.util.util import Logger
 from torch_dynamo_experiments.backend import backend_dict
 
 import os
 
 from torch_dynamo_experiments.util.util import timestamp
 
-
-def profile_experiment(args, logdir_base):
+def profile_experiment(args, logdir_base, logger):
     model, example_inputs = (
         __import__(f"torchbenchmark.models.{args.model_name}")
         .models.__dict__[args.model_name]
@@ -18,36 +18,27 @@ def profile_experiment(args, logdir_base):
     )
     model.eval()
     example_outputs = model(*example_inputs)
+    __import__('pdb').set_trace()
 
     model = torch.compile(backend=backend_dict[args.backend])(model)
 
+    if (args.capture_graph):
+        logger.log_graph(model, example_inputs)
+
     def run_inference():
         model(*example_inputs)
-
-    logdir = f"{args.logdir}/compile"
-    if not (os.path.exists(logdir)):
-        os.makedirs(logdir)
-
-    # profiling compilation crashes the machine for some reason
-    # ptu.profile_function(run_inference, logdir, 1, warmup=False)
-
+    
     # check equality
     diff = torch.linalg.matrix_norm(model(*example_inputs) - example_outputs)
-    __import__('pdb').set_trace()
-    assert diff <= 0.1
+    logger.log_singleton_scalar(diff, "compiled_diff")
 
-    # print("Compiling model")
-    # start_time = time.time()
-    # run_inference()
-    # end_time = time.time()
-    # print(f"Compiling model took {end_time - start_time} seconds")
+    print("Compiling model")
+    start_time = time.time()
+    run_inference()
+    logger.log_singleton_scalar("compilation_time", time.time() - start_time)
 
     # profile model inference time
-    logdir = f"{logdir_base}/run"
-    if not (os.path.exists(logdir)):
-        os.makedirs(logdir)
-
-    ptu.profile_function(run_inference, logdir, args.n_iter, tensorboard=True)
+    ptu.profile_function(run_inference, logdir_base, "run", args.n_iter, logger, tensorboard=True)
 
 
 def main():
@@ -59,6 +50,7 @@ def main():
     parser.add_argument("--logdir", type=str, required=True)
     parser.add_argument("--n_iter", "-n", type=int, default=1000)
     parser.add_argument("--batch_size", "-b", type=int, default=1)
+    parser.add_argument("--capture_graph", type=bool, default=False)
 
     args = parser.parse_args()
 
@@ -73,8 +65,12 @@ def main():
     # was getting a warning
     torch.set_float32_matmul_precision("high")
 
+    logger = Logger(logdir)
+
     with torch.no_grad():
-        profile_experiment(args, logdir)
+        profile_experiment(args, logdir, logger)
+
+    logger.flush()
 
 
 if __name__ == "__main__":
